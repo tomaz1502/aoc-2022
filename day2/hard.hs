@@ -27,7 +27,7 @@ losesFrom Scissors = Paper
 -- 0 if first loses, 1 if it's a tie, 2 if first wins
 result :: Move -> Move -> Int
 result a x
- | a ==           x = 1
+ | a == x           = 1
  | winsFrom a == x  = 0
  | otherwise        = 2
 
