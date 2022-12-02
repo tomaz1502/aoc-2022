@@ -26,17 +26,10 @@ losesFrom Scissors = Paper
 
 -- 0 if first loses, 1 if it's a tie, 2 if first wins
 result :: Move -> Move -> Int
-result a x =
-  if a == x then
-    1
-  else
-    case (a, x) of
-      (Rock, Paper)     -> 0
-      (Rock, Scissors)  -> 2
-      (Paper, Rock)     -> 2
-      (Paper, Scissors) -> 0
-      (Scissors, Rock)  -> 0
-      (Scissors, Paper) -> 2
+result a x
+ | a ==           x = 1
+ | winsFrom a == x  = 0
+ | otherwise        = 2
 
 score :: Move -> Move -> Int
 score a x = 3 * (result x a) + val x
