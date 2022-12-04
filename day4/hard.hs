@@ -1,10 +1,13 @@
-data Range = MkRange Int Int
+data Range =
+    Range { low  :: Int
+          , high :: Int
+          }
 
 readRange :: String -> Range
 readRange s =
   let (s1, s2') = span (/= '-') s
       s2 = tail s2'
-   in MkRange (read s1) (read s2)
+   in Range (read s1) (read s2)
 
 readPair :: String -> (Range, Range)
 readPair s =
@@ -14,8 +17,8 @@ readPair s =
 
 -- first range starts first and ends after the second one starts
 intersect :: Range -> Range -> Bool
-intersect (MkRange i1 j1) (MkRange i2 j2) =
-  i1 <= i2 && j1 >= i2
+intersect r1 r2 =
+  low r1 <= low r2 && high r1 >= low r2
 
 badPair :: Range -> Range -> Bool
 badPair r1 r2 = r1 `intersect` r2 || r2 `intersect` r1
