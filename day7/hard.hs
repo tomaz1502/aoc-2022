@@ -3,6 +3,7 @@ import Data.Maybe (fromJust)
 import Debug.Trace (trace)
 
 type Path = [String]
+type FileSystem = M.Map Path (Int, [String])
 
 diskSize, requiredSpace :: Int
 diskSize = 70000000
@@ -10,47 +11,56 @@ requiredSpace = 30000000
 
 processList :: [String] -> (Int, [String], [String])
 processList [] = (0, [], [])
-processList (l:ls) =
-  let (restSize, restChildren, restInp) = processList ls
-   in case words l of
-        "$":_ -> (0, [], l:ls)
-        "dir":dirName:[] -> (restSize, dirName : restChildren, restInp)
-        size:_ -> ((read size) + restSize, restChildren, restInp)
-        i -> error (show i)
+processList list@(item : items) =
+  let (restSize, restChildren, restInp) = processList items
+   in case words item of
+        "$" : _              -> (0, [], list)
+        "dir" : dirName : [] -> (restSize, dirName : restChildren, restInp)
+        size : _             -> ((read size) + restSize, restChildren, restInp)
+        _                    -> error "[processList]: unexpected string"
 
+-- Build the file system represented as a map from a path
+-- to it's size and the name of it's chilren. Only computes
+-- the size of the files that are directly contained in that
+-- path
+buildPartialTree :: [String] -> FileSystem
+buildPartialTree = go M.empty []
+  where go :: FileSystem -> Path -> [String] -> FileSystem
+        go acc _ [] = acc
+        go acc cwd (cmd : cmds) =
+          case words cmd of
+            "$" : "cd" : ["/"]     -> go acc [] cmds
+            "$" : "cd" : [".."]    -> go acc (drop 1 cwd) cmds
+            "$" : "cd" : [dirName] -> go acc (dirName : cwd) cmds
+            "$" : ["ls"] ->
+              let (size, children, restInp) = processList cmds
+               in go (M.insert cwd (size, children) acc) cwd restInp
+            _ -> error "[buildPartialTree]: unexpected command"
 
--- take the map only containing the sum of sizes of files
--- directly contained in each directory and returns the
--- full size of the subtree
-dfs :: M.Map Path (Int, [String]) -> Path -> M.Map Path Int
+-- Take the map only containing the sum of sizes of files
+-- directly contained in each directory and returns map
+-- containing the full size of the subtree
+dfs :: FileSystem -> Path -> M.Map Path Int
 dfs m cwd =
   let (currSize, children) = fromJust $ M.lookup cwd m
       children' = map (:cwd) children
       rec' = map (dfs m) children'
-      rec = foldr M.union M.empty rec'
-      fullSize = foldr (\x xs -> fromJust (M.lookup x rec) + xs) currSize children'
+      rec = M.unions rec'
+      getChildSize = \child -> fromJust (M.lookup child rec)
+      fullSize = foldr (\ch acc -> getChildSize ch + acc) currSize children'
    in M.insert cwd fullSize rec
 
 solve :: [String] -> Int
 solve inp =
-  let info = go M.empty [] inp
+  let info = buildPartialTree inp
       folderSizes = dfs info []
       rootSize = fromJust (M.lookup [] folderSizes)
       freeSpace = diskSize - rootSize
       requiredRemoval = requiredSpace - freeSpace
-      answer = foldr (\x xs -> if x >= requiredRemoval && x <= xs then x else xs) rootSize folderSizes
-   in answer
-  where go :: M.Map Path (Int, [String]) -> Path -> [String] -> M.Map Path (Int, [String])
-        go m _ [] = m
-        go m cwd (l:ls) =
-          case words l of
-            "$":"cd":["/"]     -> go m [] ls
-            "$":"cd":[".."]    -> go m (drop 1 cwd) ls
-            "$":"cd":[dirName] -> go m (dirName : cwd) ls
-            "$":["ls"] ->
-              let (size, children, restInp) = processList ls
-               in go (M.insert cwd (size, children) m) cwd restInp
-            _ -> error "unexpected command"
+      checkFolder = \fSize currBest ->
+        if fSize >= requiredRemoval && fSize <= currBest
+        then fSize else currBest
+   in foldr checkFolder rootSize folderSizes
 
 main :: IO ()
 main = interact (report . solve . lines)
