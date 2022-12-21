@@ -18,13 +18,6 @@ data Move =
          , amt :: Int
          }
 
-rec :: [(Int, Int)] -> [(Int, Int)]
-rec [] = []
-rec [x] = [x]
-rec (p1:p2:t) =
-  let p2' = updateTail p1 p2
-   in p1 : rec (p2':t)
-
 updateHead :: Dir -> (Int, Int) -> (Int, Int)
 updateHead dir (ih, jh) =
   case dir of
@@ -50,12 +43,18 @@ runMove Move{..}
       t1 = updateTail (ih', jh') h
       tailCoords' = rec (t1 : t)
       seenPos' = S.insert (last tailCoords') seenPos
-   in runState (runMove (Move dir (amt - 1))) (Context ih' jh' tailCoords' seenPos')
+      newCtx = Context ih' jh' tailCoords' seenPos'
+   in runState (runMove (Move dir (amt - 1))) newCtx
+  where rec [] = []
+        rec [x] = [x]
+        rec (p1:p2:t) =
+          let p2' = updateTail p1 p2
+           in p1 : rec (p2':t)
 
 runMoves :: [Move] -> State Context ()
 runMoves = sequence_ . map runMove
 
--- solve :: [Move] -> Int
+solve :: [Move] -> Int
 solve ms =
   let tailCoord = [(0,0) | _ <- [1..9]]
       initialState = Context 0 0 tailCoord (S.singleton (0,0))
