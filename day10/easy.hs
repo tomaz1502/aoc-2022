@@ -1,14 +1,18 @@
-solve :: [String] -> Int
-solve = go 1 1
-  where go _ _ [] = 0
+getPos :: [String] -> [Int]
+getPos ss = 1: go 1 1 ss
+  where go _ _ [] = []
         go val tick (inst:insts) =
-         let add = if tick `mod` 40 == 20 then val * tick else 0
-          in case words inst of
-            ["noop"] -> add + go val (tick + 1) insts
+          case words inst of
+            ["noop"] -> val : go val (tick + 1) insts
             ["addx", amt] ->
-                let corner = if tick `mod` 40 == 19 then val * (tick + 1) else 0
-                 in corner + add + go (val + read amt) (tick + 2) insts
+                 val : val + read amt : go (val + read amt) (tick + 2) insts
+
+solve :: [Int] -> Int
+solve pos =
+  let indexed = zip [1..] pos
+      interesting = filter (\(p, _) -> p `mod` 40 == 20) indexed
+   in foldr (\(p, v) acc -> p * v + acc) 0 interesting
 
 main :: IO ()
-main = interact (report . solve . lines)
+main = interact (report . solve . getPos . lines)
   where report i = show i <> "\n"
