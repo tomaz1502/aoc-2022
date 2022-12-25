@@ -1,11 +1,12 @@
 getPos :: [String] -> [Int]
-getPos ss = 1: go 1 1 ss
-  where go _ _ [] = []
-        go val tick (inst:insts) =
+getPos ss = 1 : go 1 ss
+  where go _ [] = []
+        go val (inst:insts) =
           case words inst of
-            ["noop"] -> val : go val (tick + 1) insts
+            ["noop"] -> val : go val insts
             ["addx", amt] ->
-                 val : val + read amt : go (val + read amt) (tick + 2) insts
+                 val : val + read amt : go (val + read amt) insts
+            _ -> error "unknown instruction"
 
 solve :: [Int] -> Int
 solve pos =
